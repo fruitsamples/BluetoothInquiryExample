@@ -33,7 +33,10 @@
 
 #import <unistd.h>
 
-#import <Foundation/NSDictionary.h>
+#import <Foundation/Foundation.h>
+#import <Cocoa/Cocoa.h>
+#import <CoreFoundation/CoreFoundation.h>
+#import <CoreServices/CoreServices.h>
 
 #import <IOBluetooth/objc/IOBluetoothDeviceInquiry.h>
 #import <IOBluetooth/IOBluetoothUserLib.h>
@@ -58,22 +61,6 @@ NSSize	gCellImageSize;
 #pragma mark -
 #pragma mark === NSApp Delegate methods and routines ===
 #endif
-//===========================================================================================================================
-// - (BOOL)windowShouldClose:(NSWindow *)sender
-//===========================================================================================================================
-
-- (BOOL)windowShouldClose:(NSWindow *)sender
-{
-    return TRUE;
-}
-
-//===========================================================================================================================
-// - (void)applicationWillTerminate:(NSNotification *)sender
-//===========================================================================================================================
-
-- (void)applicationWillTerminate:(NSNotification *)sender
-{
-}
 
 //===========================================================================================================================
 //	- (void)awakeFromNib
@@ -81,8 +68,6 @@ NSSize	gCellImageSize;
 
 - (void)awakeFromNib
 {
-    NSUserDefaults 	*					defaults;
-
 	gCellSize 		= NSMakeSize( 329, 70 );
 	gCellImageSize	= NSMakeSize( 48, 48 );
 
@@ -97,10 +82,7 @@ NSSize	gCellImageSize;
 	
     [_matrixView setNeedsDisplay:TRUE];
 
-    // load the user defaults.
-    defaults =[NSUserDefaults standardUserDefaults ];
-
-	if ( IOBluetoothValidateHardware( nil ) != kIOReturnSuccess )
+	if( IOBluetoothValidateHardware( nil ) != kIOReturnSuccess )
 	{
 		[NSApp terminate:self];
 	}
@@ -138,6 +120,8 @@ NSSize	gCellImageSize;
 
 - (IBAction) handleSearchButton:(id)sender
 {
+	IOReturn ret;
+	
 	if( !_busy )
 	{
 		if( IOBluetoothLocalDeviceAvailable() == FALSE )
@@ -146,29 +130,29 @@ NSSize	gCellImageSize;
 		}
 		
 		[_searchButton 	setEnabled:TRUE];
-		[self	startSearch];
+		ret = [self startInquiry];
 	}
 	else
 	{
 		[_searchButton 	setEnabled:FALSE];
-		[self			stopSearch];
-	}
+		ret = [self stopInquiry];
+	}	
 }
 
 #if 0
 #pragma mark -
-#pragma mark === Start and Stop Device Search Stuff ===
+#pragma mark === Start and Stop Inquiry ===
 #endif
 
 //===========================================================================================================================
-// startSearch
+// startInquiry
 //===========================================================================================================================
 
--(IOReturn)startSearch
+-(IOReturn)startInquiry
 {
 	IOReturn	status;
 
-	[self	stopSearch];
+	[self	stopInquiry];
 
 	_inquiry = [IOBluetoothDeviceInquiry	inquiryWithDelegate:self];
 	
@@ -190,17 +174,20 @@ NSSize	gCellImageSize;
 }
 
 //===========================================================================================================================
-// stopSearch
+// stopInquiry
 //===========================================================================================================================
-
--(void)stopSearch
+- (IOReturn) stopInquiry
 {
+	IOReturn ret = kIOReturnNotOpen;
+	
 	if( _inquiry )
 	{
-		[_inquiry stop];
+		ret = [_inquiry stop];
 		[_inquiry release];
 		_inquiry = nil;
 	}
+	
+	return ret;
 }
 
 #if 0
@@ -284,7 +271,6 @@ NSSize	gCellImageSize;
 	NSBeep();
 }
 
-
 //===========================================================================================================================
 //	addDeviceToList
 //===========================================================================================================================
@@ -294,8 +280,6 @@ NSSize	gCellImageSize;
     id								newButton;
 	const BluetoothDeviceAddress*	addressPtr			= [inDevice getAddress];
     id 								buttonIcon			= NULL;
-	BluetoothDeviceClassMajor		deviceClassMajor 	= [inDevice getDeviceClassMajor];
-	BluetoothDeviceClassMinor		deviceClassMinor 	= [inDevice getDeviceClassMinor];
     NSString*						deviceCODString		= nil;
     NSString*						deviceAddressString	= nil;
 	NSString*						deviceNameString	= [inDevice getName];
@@ -348,9 +332,7 @@ NSSize	gCellImageSize;
 	
 	// load up an image for the class of device which we have found.
 	
-	[self getIconForClassOfDevice:&buttonIcon
-			majorClass:deviceClassMajor
-			minorClass:deviceClassMinor];
+	buttonIcon = [NSImage imageNamed:@"BluetoothLogo.tiff"];
 	[buttonIcon setScalesWhenResized:TRUE];
 	[buttonIcon setSize:gCellImageSize];
 
@@ -472,68 +454,12 @@ NSSize	gCellImageSize;
 	return( TRUE );
 }
 
+@end
+
 #if 0
 #pragma mark -
-#pragma mark === Misc Stuff ===
+#pragma mark === C Stuff ===
 #endif
-
-//===========================================================================================================================
-//	getIconForClassOfDevice
-//===========================================================================================================================
-
--(void)getIconForClassOfDevice:(id*)ioButtonIcon
-			majorClass:(BluetoothDeviceClassMajor)inMajorClass
-			minorClass:(BluetoothDeviceClassMinor)inMinorClass
-{
-	switch(inMajorClass)
-	{
-		case kBluetoothDeviceClassMajorComputer:
-			if( inMinorClass == kBluetoothDeviceClassMinorComputerDesktopWorkstation )
-			{
-				*ioButtonIcon = [NSImage imageNamed:@"iMac.tiff"];
-			}
-			else if( inMinorClass == kBluetoothDeviceClassMinorComputerServer )
-			{
-				*ioButtonIcon = [NSImage imageNamed:@"DesktopG4.tiff"];
-			}
-			else if( inMinorClass == kBluetoothDeviceClassMinorComputerHandheld )
-			{
-				*ioButtonIcon = [NSImage imageNamed:@"BluetoothLogo.tiff"];
-			}
-			else if( inMinorClass == kBluetoothDeviceClassMinorComputerLaptop )
-			{
-				*ioButtonIcon = [NSImage imageNamed:@"Powerbook.tiff"];
-			}
-			else if( inMinorClass == kBluetoothDeviceClassMinorComputerPalmSized )
-			{
-				*ioButtonIcon = [NSImage imageNamed:@"BluetoothLogo.tiff"];
-			}
-			break;
-		case kBluetoothDeviceClassMajorPhone:
-			*ioButtonIcon = [NSImage imageNamed:@"BluetoothLogo.tiff"];
-			break;
-		case kBluetoothDeviceClassMajorLANAccessPoint:
-			*ioButtonIcon = [NSImage imageNamed:@"BluetoothLogo.tiff"];
-			break;
-		case kBluetoothDeviceClassMajorAudio:
-			*ioButtonIcon = [NSImage imageNamed:@"BluetoothLogo.tiff"];
-			break;
-		case kBluetoothDeviceClassMajorImaging:
-			if( inMinorClass == kBluetoothDeviceClassMinorImaging1Printer )
-			{
-				*ioButtonIcon = [NSImage imageNamed:@"BluetoothLogo.tiff"];
-			}
-			break;
-		case kBluetoothDeviceClassMajorMiscellaneous:
-		case kBluetoothDeviceClassMajorPeripheral:
-		case kBluetoothDeviceClassMajorUnclassified:
-		default:
-			*ioButtonIcon = [NSImage imageNamed:@"BluetoothLogo.tiff"];
-			break;
-	}
-}
-
-@end
 
 //===========================================================================================================================
 //	GetStringForMajorCOD
@@ -545,7 +471,6 @@ NSString* GetStringForMajorCOD( BluetoothDeviceClassMajor inDeviceClassMajor )
     {
         case( kBluetoothDeviceClassMajorMiscellaneous ):
 		{
-			
             return( @"Miscellaneous" );
             break;
 		}           

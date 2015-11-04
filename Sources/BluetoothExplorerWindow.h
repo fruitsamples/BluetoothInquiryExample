@@ -60,29 +60,21 @@
     NSMutableArray*					_foundDevices;
 }
 
--(BOOL)windowShouldClose:(NSWindow *)sender;
--(void)applicationWillTerminate:(NSNotification *)sender;
 -(void)awakeFromNib;
 
 // IB Actions.
 
 -(IBAction)handleSearchButton:(id)sender;
+-(IBAction)clearFoundDevices:(id)sender;
 
-// UI Management.
+// misc.
 
 -(void)addDeviceToList:(IOBluetoothDevice*)inDeviceRef;
 -(BOOL)saveNewDeviceIfAcceptable:(IOBluetoothDevice*)inNewDevice;
 -(void)deviceListDoubleAction;
-
-// Utility.
-
--(void)getIconForClassOfDevice:(id*)ioButtonIcon
-			majorClass:(BluetoothDeviceClassMajor)inMajorClass
-			minorClass:(BluetoothDeviceClassMinor)inMinorClass;
-
 -(void)updateDeviceInfoInList:(IOBluetoothDevice *)inDevice;
--(void)stopSearch;
--(IOReturn)startSearch;
+-(IOReturn)startInquiry;
+-(IOReturn)stopInquiry;
 
 @end
 
